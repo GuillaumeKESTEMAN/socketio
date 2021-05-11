@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ENIGMA chat</title>
+    <style>
+        body { margin: 0; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+        #form { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
+        #input { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin-top: 0.25rem; margin-bottom: 0.25rem; margin-right: 10px;}
+        #input:focus { outline: none; }
+        #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
+        #span {text-align: center; margin: auto; padding-left: 7px; padding-right: 7px; padding-bottom: 3px;}
+
+        #messages { list-style-type: none; margin: 0; padding: 0; }
+        #messages > li { padding: 0.5rem 1rem; }
+        #messages > li:nth-child(odd) { background: #efefef; }
+    </style>
+</head>
+<body>
+<ul id="messages"></ul>
+<form id="form" action="">
+    <input id="input" autocomplete="off" /><button>Send</button>
+</form>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    var socket = io();
+    let myToken = 0;
+
+    var messages = document.getElementById('messages');
+    var form = document.getElementById('form');
+    var input = document.getElementById('input');
+
+    socket.on('pseudoRequired', function (pseudos, guestIndex) {
+        let pseudo;
+        let pseudoVerify = false;
+        let alertMessage = "Pseudo :";
+        while (pseudo === undefined || !pseudoVerify){
+            pseudoVerify = true;
+            pseudo = prompt(alertMessage);
+            if(pseudo === ""){
+                pseudoVerify = false;
+                for (let i = 0; i < 1000; i++) {
+                    if(guestIndex[i] === undefined || guestIndex[i] === null){
+                        pseudo = "Invité_"+ (i+1);
+                        guestIndex[i] = true;
+                        pseudoVerify = true;
+                        break;
+                    }
+                }
+            } else{
+                for (let i = 0; i < pseudos.length; i++) {
+                    if(pseudo === pseudos[i]){
+                        pseudoVerify = false;
+                        alertMessage = "Pseudo : (le pseudo que vous avez entré est déjà utilisé)";
+                        break;
+                    }
+                }
+            }
+        }
+        console.log(pseudo);
+        let writePseudo = document.createElement('span');
+        writePseudo.textContent = pseudo;
+        writePseudo.setAttribute('id','span');
+        let form = document.getElementById('form');
+        form.insertBefore(writePseudo,form.childNodes[0]);
+        socket.emit('pseudo', pseudo, guestIndex);
+    })
+
+    socket.on('token', function(token) {
+        myToken = token;
+    });
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (input.value && myToken !== 0) {
+            socket.emit('chat message', input.value, myToken);
+            input.value = '';
+        }
+    });
+
+    socket.on('users', function(pseudos) {
+        let item;
+        if(pseudos.length === 1){
+            item = document.createElement('li');
+            item.textContent = "You are alone in the chat";
+            messages.appendChild(item);
+            window.scrollTo(0, document.body.scrollHeight);
+        } else{
+            item = document.createElement('li');
+            if(pseudos.length === 2){
+                item.textContent = "One user connected :";
+            } else{
+                item.textContent = "Users connected :";
+            }
+            messages.appendChild(item);
+            window.scrollTo(0, document.body.scrollHeight);
+            for (let i = 0; i < pseudos.length-1; i++) {
+                item = document.createElement('li');
+                item.textContent = "\t- " + pseudos[i];
+                messages.appendChild(item);
+                window.scrollTo(0, document.body.scrollHeight);
+            }
+            item = document.createElement('li');
+            messages.appendChild(item);
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+    });
+
+    socket.on('newUser', function (newUserPseudo) {
+        let item = document.createElement('li');
+        item.textContent = "New user connected :  " + newUserPseudo;
+        messages.appendChild(item);
+        window.scrollTo(0, document.body.scrollHeight);
+    });
+
+    socket.on('userLeft', function (userPseudo) {
+        let item = document.createElement('li');
+        if(userPseudo !== null){
+            item.textContent = "A user left the chat :  " + userPseudo;
+        } else{
+            item.textContent = "A user left the chat";
+        }
+        messages.appendChild(item);
+        window.scrollTo(0, document.body.scrollHeight);
+    });
+
+    socket.on('chat message', function(msg) {
+        let item = document.createElement('li');
+        item.textContent = msg;
+        messages.appendChild(item);
+        window.scrollTo(0, document.body.scrollHeight);
+    });
+
+    socket.on('logs', function (data) {
+        console.log(data);
+    });
+</script>
+</body>
+</html>
