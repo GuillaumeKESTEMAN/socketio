@@ -3,8 +3,8 @@ const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const fs = require('fs');
 let users = [];
-let pseudos = [];                                                           //tableau contenant tous les pseudos des participants
-let guestIndex = [];                                                        //tableau disant si l'emplacement x d'invité est pris
+let pseudos = [];                                                           //list containing all the participants' nicknames
+let guestIndex = [];                                                        //list saying if guest place x is taken
 
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
